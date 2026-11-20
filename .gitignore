@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Secrets and environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local runtime data: tokens, sessions, mail caches
+.data/
+.local/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+
+# Logs
+logs/
+*.log
+
+# Tests and tooling caches
+coverage/
+.cache/
+.vitest/
+
+# macOS
+.DS_Store
+
+# Editor-local files
+.idea/
+.vscode/
+*.swp
+*.swo

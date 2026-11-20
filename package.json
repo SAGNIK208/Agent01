@@ -1,0 +1,39 @@
+{
+  "name": "agent01",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SAGNIK208/Agent01.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SAGNIK208/Agent01/issues"
+  },
+  "homepage": "https://github.com/SAGNIK208/Agent01#readme",
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.106",
+    "@ai-sdk/google": "^4.0.122",
+    "@ai-sdk/openai": "^4.0.121",
+    "ai": "^7.0.177",
+    "dotenv": "^18.0.10",
+    "zod": "^4.6.7"
+  },
+  "type": "module"
+}
