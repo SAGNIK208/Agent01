@@ -1,4 +1,4 @@
-export type Connector = "mail" | "slack";
+export type Connector = "mail" | "chat";
 
 export type Draft = {
   id: string;

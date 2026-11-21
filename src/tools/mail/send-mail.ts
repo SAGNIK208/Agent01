@@ -1,14 +1,13 @@
 import { tool } from "ai";
 import { z } from "zod";
-import MailComposer from "nodemailer/lib/mail-composer";
 import type { ConfirmDraft } from "../../agent/confirm";
 import { getDraft } from "../../agent/state";
-import { corsair } from "../../connectors/corsair";
+import type { MailSender } from "../../connectors/communication/contracts";
 
-export function sendEmail(confirmDraft: ConfirmDraft) {
+export function createSendEmailTool(mailSender: MailSender, confirmDraft: ConfirmDraft) {
   return tool({
     description:
-      "Show a saved email draft, request user confirmation, then send it through Gmail.",
+      "Show a saved email draft, request user confirmation, then send it through email.",
 
     inputSchema: z.object({
       draftId: z.string().min(1),
@@ -35,47 +34,37 @@ export function sendEmail(confirmDraft: ConfirmDraft) {
       if (!from || !z.string().email().safeParse(from).success) {
         return {
           status: "error",
-          reason: "Set GMAIL_FROM to your connected Gmail address in .env.",
+          reason: "Set GMAIL_FROM to your connected email address in .env.",
         };
       }
-
-      // Snapshot the exact values that will be reviewed and sent.
-      const message = {
-        from,
-        to: draft.to,
-        subject: draft.subject,
-        text: draft.body,
-      };
-
-      const mime = await new MailComposer(message).compile().build();
-      const raw = mime.toString("base64url");
 
       const decision = await confirmDraft(
         draft,
         [
           "Email",
-          `From: ${message.from}`,
-          `To: ${message.to}`,
-          `Subject: ${message.subject}`,
+          `From: ${from}`,
+          `To: ${draft.to}`,
+          `Subject: ${draft.subject}`,
           "",
-          message.text,
+          draft.body,
         ].join("\n"),
       );
 
       if (decision.status !== "approved") return decision;
 
       try {
-        const result = await corsair.gmail.api.messages.send({
-          userId: "me",
-          raw,
+        const result = await mailSender.send({
+          to: draft.to,
+          subject: draft.subject,
+          body: draft.body,
         });
 
-        if (!result.id) {
+        if (!result.messageId) {
           return {
             status: "unknown",
             draftId,
             reason:
-              "No message ID was returned. Check Gmail Sent before attempting another send.",
+              "No message ID was returned. Check Sent folder before attempting another send.",
           };
         }
 
@@ -83,8 +72,8 @@ export function sendEmail(confirmDraft: ConfirmDraft) {
           status: "sent",
           connector: "mail",
           draftId,
-          messageId: result.id,
-          to: message.to,
+          messageId: result.messageId,
+          to: draft.to,
         };
       } catch (error) {
         console.error(
@@ -96,7 +85,7 @@ export function sendEmail(confirmDraft: ConfirmDraft) {
           status: "unknown",
           draftId,
           reason:
-            "The send could not be confirmed. Check Gmail Sent before attempting another send. Do not retry automatically.",
+            "The send could not be confirmed. Check Sent folder before attempting another send. Do not retry automatically.",
         };
       }
     },
