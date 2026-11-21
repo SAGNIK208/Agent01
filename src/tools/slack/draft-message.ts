@@ -3,8 +3,8 @@ import { tool } from "ai";
 import { z } from "zod";
 import { saveDraft } from "../../agent/state";
 
-export const draftSlackMessage = tool({
-  description: "Create a local Slack channel message draft. Does not post it.",
+export const draftChatMessage = tool({
+  description: "Create a local chat message draft (e.g. Slack). Does not post it.",
   inputSchema: z.object({
     channel: z.string().trim().min(1),
     body: z.string().trim().min(1),
@@ -12,7 +12,7 @@ export const draftSlackMessage = tool({
   execute: async ({ channel, body }) => {
     const draft = saveDraft({
       id: randomUUID(),
-      connector: "slack",
+      connector: "chat",
       channel,
       body,
       approved: false,
