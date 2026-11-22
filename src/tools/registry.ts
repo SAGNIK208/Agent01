@@ -1,3 +1,4 @@
+import type { LanguageModel } from "ai";
 import { createDraftConfirmation, type Confirm } from "../agent/confirm";
 import { corsair } from "../connectors/corsair";
 import { createGmailReader, createGmailSender, createGmailMailActions } from "../connectors/communication/gmail";
@@ -8,6 +9,9 @@ import { createSendEmailTool } from "./mail/send-mail";
 import { draftChatMessage } from "./slack/draft-message";
 import { createSendChatMessageTool } from "./slack/send-message";
 import { createMailActionTools } from "./mail/mail-action";
+import { createDailyBriefingTool } from "./communication/daily-briefing";
+import { viewDraft } from "./communication/get-draft";
+import { createConfiguredDailyBriefing } from "../agent/daily-briefing";
 
 // Strategies wired with Corsair concrete implementations
 const mailReader = createGmailReader(corsair.gmail.api.messages);
@@ -22,7 +26,7 @@ const communicationReadTools = createCommunicationReadTools({
   chat: chatReader,
 });
 
-export function getTools(confirm: Confirm) {
+export function getTools(confirm: Confirm, model?: LanguageModel) {
   const confirmDraft = createDraftConfirmation(confirm);
   const mailActionTools = createMailActionTools({
     mailActions,
@@ -33,8 +37,10 @@ export function getTools(confirm: Confirm) {
     ...communicationReadTools,
     draftEmail,
     draftChatMessage,
+    viewDraft,
     sendEmail: createSendEmailTool(mailSender, confirmDraft),
     sendChatMessage: createSendChatMessageTool(chatSender, confirmDraft),
+    ...(model ? { getDailyBriefing: createDailyBriefingTool(createConfiguredDailyBriefing(model)) } : {}),
     ...mailActionTools,
   };
 }

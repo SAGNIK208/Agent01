@@ -3,6 +3,7 @@ import { createCorsair } from "corsair";
 import { gmail } from "@corsair-dev/gmail";
 import { slack } from "@corsair-dev/slack";
 
+
 const db = new Database("corsair.db");
 
 export const corsair = createCorsair({
@@ -18,3 +19,5 @@ export const corsair = createCorsair({
     allowWorkflowExecution: true
   },
 });
+
+export { db };

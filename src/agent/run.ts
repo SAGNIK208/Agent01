@@ -6,7 +6,7 @@ import { SYSTEM_PROMPT } from "./prompt";
 
 export function createAgent({ confirm }: { confirm: Confirm }) {
   const model = createSelectedModel();
-  const tools = getTools(confirm);
+  const tools = getTools(confirm, model);
   const messages: ModelMessage[] = [];
 
   return {

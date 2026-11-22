@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { ConfirmDraft } from "../../agent/confirm";
-import { getDraft } from "../../agent/state";
+import { getDraft, getLatestDraft } from "../../agent/state";
 import type { MailSender } from "../../connectors/communication/contracts";
 
 export function createSendEmailTool(mailSender: MailSender, confirmDraft: ConfirmDraft) {
@@ -10,11 +10,14 @@ export function createSendEmailTool(mailSender: MailSender, confirmDraft: Confir
       "Show a saved email draft, request user confirmation, then send it through email.",
 
     inputSchema: z.object({
-      draftId: z.string().min(1),
+      draftId: z
+        .string()
+        .min(1)
+        .describe("The draft ID returned by draftEmail, or 'latest' to send the most recent email draft."),
     }),
 
     execute: async ({ draftId }) => {
-      const draft = getDraft(draftId);
+      const draft = getDraft(draftId) ?? getLatestDraft("mail");
 
       if (
         !draft ||
