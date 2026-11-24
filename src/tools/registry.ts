@@ -12,6 +12,8 @@ import { createMailActionTools } from "./mail/mail-action";
 import { createDailyBriefingTool } from "./communication/daily-briefing";
 import { viewDraft } from "./communication/get-draft";
 import { createConfiguredDailyBriefing } from "../agent/daily-briefing";
+import { createGoogleCalendarReader } from "../connectors/communication/gcal";
+import { createCalendarActionTools } from "./calendar/calendar-action";
 
 // Strategies wired with Corsair concrete implementations
 const mailReader = createGmailReader(corsair.gmail.api.messages);
@@ -26,15 +28,22 @@ const communicationReadTools = createCommunicationReadTools({
   chat: chatReader,
 });
 
+const calendarReader = createGoogleCalendarReader({
+  events: corsair.googlecalendar.api.events,
+  calendar: corsair.googlecalendar.api.calendar,
+});
+
 export function getTools(confirm: Confirm, model?: LanguageModel) {
   const confirmDraft = createDraftConfirmation(confirm);
   const mailActionTools = createMailActionTools({
     mailActions,
     confirm,
   });
+  const calendarTools = createCalendarActionTools(calendarReader, confirm);
 
   return {
     ...communicationReadTools,
+    ...calendarTools,
     draftEmail,
     draftChatMessage,
     viewDraft,

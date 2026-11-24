@@ -125,3 +125,148 @@ export interface MailActions {
     input: MailLabelChangeInput,
   ): Promise<MailLabelChangeResult>;
 }
+
+export type CalendarEventTime =
+  | { kind: "date"; value: string }
+  | { kind: "dateTime"; value: string };
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: CalendarEventTime;
+  end: CalendarEventTime;
+  location?: string;
+  status?: "confirmed" | "tentative" | "cancelled";
+  attendeeStatus?: "needsAction" | "accepted" | "declined" | "tentative";
+  isOrganizer?: boolean;
+}
+
+export interface CalendarListEventsInput extends PageRequest {
+  from: string;
+  to: string;
+  timeZone: string;
+  filter?: "all" | "pending";
+}
+
+export interface CalendarEventPage extends Page<CalendarEvent> {
+  skipped: number;
+}
+
+export interface CalendarRangeInput {
+  from: string;
+  to: string;
+  timeZone: string;
+  filter?: "all" | "pending";
+}
+
+export interface CalendarRangePage extends Page<CalendarEvent> {
+  skipped: number;
+}
+
+export interface CalendarEventDetails extends CalendarEvent {
+  description?: string;
+  location?: string;
+  meetingLink?: string;
+  attendees?: string[];
+  status: "confirmed" | "tentative" | "cancelled";
+}
+
+export interface CalendarAvailabilityInput {
+  from: string;
+  to: string;
+  timeZone: string;
+  attendeeEmails: string[];
+}
+
+export interface CalendarAvailability {
+  status: "available" | "unavailable" | "unknown";
+  busyPeriods: {
+    from: string;
+    to: string;
+  }[];
+  error?: string;
+}
+
+export interface CalendarCreateEventInput {
+  title: string;
+  start: string;
+  end: string;
+  timeZone: string;
+  description?: string;
+  location?: string;
+  attendeeEmails?: string[];
+  videoConferencing?: "google_meet" | "none";
+  meetingLink?: string;
+}
+
+export interface CalendarUpdateEventInput {
+  eventId: string;
+  title?: string;
+  start?: string;
+  end?: string;
+  timeZone?: string;
+  description?: string;
+  location?: string;
+  attendeeEmails?: string[];
+  videoConferencing?: "google_meet" | "none";
+  meetingLink?: string;
+}
+
+export interface CalendarEventMutationResult {
+  status: "created" | "updated" | "deleted" | "failed";
+  eventId?: string;
+  meetingLink?: string;
+  error?: string;
+}
+
+export interface CalendarEventResponseInput {
+  eventId: string;
+  response: "accepted" | "declined" | "tentative";
+  comment?: string;
+}
+
+export interface CalendarOutOfOfficeInput {
+  title: string;
+  from: string;
+  to: string;
+  timeZone: string;
+  message?: string;
+}
+
+export interface CalendarReader {
+  listEvents(
+    input: CalendarListEventsInput,
+  ): Promise<CalendarEventPage>;
+
+  listEventsInRange(
+    input: CalendarRangeInput & PageRequest,
+  ): Promise<CalendarRangePage>;
+
+  getEvent(eventId: string): Promise<CalendarEvent | null>;
+
+  getEventDetails(
+    eventId: string,
+  ): Promise<CalendarEventDetails | null>;
+
+  checkAvailability(
+    input: CalendarAvailabilityInput,
+  ): Promise<CalendarAvailability>;
+
+  createEvent(
+    input: CalendarCreateEventInput,
+  ): Promise<CalendarEventMutationResult>;
+
+  updateEvent(
+    input: CalendarUpdateEventInput,
+  ): Promise<CalendarEventMutationResult>;
+
+  deleteEvent(eventId: string): Promise<CalendarEventMutationResult>;
+
+  respondToEvent(
+    input: CalendarEventResponseInput,
+  ): Promise<CalendarEventMutationResult>;
+
+  setOutOfOffice(
+    input: CalendarOutOfOfficeInput,
+  ): Promise<CalendarEventMutationResult>;
+}

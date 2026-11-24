@@ -3,7 +3,7 @@ import { corsair } from "../src/connectors/corsair";
 
 const { connectUrl } = await corsair.manage.connect.createLink({
   plugin: "gmail",
-  tenantId: "local-user",
+  tenantId: "default",
 });
 
 console.log("Open this URL in your browser:");
