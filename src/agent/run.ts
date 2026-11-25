@@ -1,17 +1,34 @@
-import { generateText, stepCountIs, type ModelMessage } from "ai";
+import { streamText, stepCountIs, type ModelMessage } from "ai";
 import { createSelectedModel } from "../providers/registry";
 import { getTools } from "../tools/registry";
 import type { Confirm } from "./confirm";
 import { SYSTEM_PROMPT } from "./prompt";
 import { getLocalNowString, requireTimeZone } from "../system/timezone";
+import {
+  checkInputGuardrail,
+  checkOutputGuardrail,
+  createLlmScopeClassifier,
+} from "./guardrails";
+
+export interface RunOptions {
+  onChunk?: (chunk: string) => void;
+}
 
 export function createAgent({ confirm }: { confirm: Confirm }) {
   const model = createSelectedModel();
   const tools = getTools(confirm, model);
+  const scopeClassifier = createLlmScopeClassifier(model);
   const messages: ModelMessage[] = [];
 
   return {
-    async run(input: string): Promise<string> {
+    async run(input: string, options?: RunOptions): Promise<string> {
+      const inputCheck = await checkInputGuardrail(input, scopeClassifier);
+      if (!inputCheck.allowed) {
+        const blocked = inputCheck.userMessage ?? "Request blocked by input guardrail.";
+        options?.onChunk?.(blocked);
+        return blocked;
+      }
+
       const userMessage: ModelMessage = { role: "user", content: input };
 
       let timeZone = "UTC";
@@ -37,7 +54,7 @@ export function createAgent({ confirm }: { confirm: Confirm }) {
         "- Always express and present times to the user in 24-hour format (YYYY-MM-DD HH:mm:ss) in their local timezone.",
       ].join("\n");
 
-      const result = await generateText({
+      const result = streamText({
         model,
         system: contextualSystemPrompt,
         messages: [...messages, userMessage],
@@ -45,8 +62,20 @@ export function createAgent({ confirm }: { confirm: Confirm }) {
         stopWhen: stepCountIs(5),
       });
 
-      messages.push(userMessage, ...result.response.messages);
-      return result.text;
+      let fullText = "";
+      for await (const chunk of result.textStream) {
+        fullText += chunk;
+        options?.onChunk?.(chunk);
+      }
+
+      const outputCheck = checkOutputGuardrail(fullText);
+      if (!outputCheck.allowed) {
+        return outputCheck.userMessage ?? "Response blocked by output guardrail.";
+      }
+
+      const response = await result.response;
+      messages.push(userMessage, ...response.messages);
+      return outputCheck.sanitizedOutput ?? fullText;
     },
   };
 }
