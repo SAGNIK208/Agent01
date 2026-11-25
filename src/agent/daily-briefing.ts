@@ -3,11 +3,16 @@ import {
   createDailyBriefing,
   createGmailBriefingSource,
   createSlackBriefingSource,
+  createCalendarBriefingSource,
   createSqliteCheckpointStore,
 } from "../briefing";
 import { corsair, db } from "../connectors/corsair";
+import type { CalendarReader } from "../connectors/communication/contracts";
 
-export function createConfiguredDailyBriefing(model: LanguageModel) {
+export function createConfiguredDailyBriefing(
+  model: LanguageModel,
+  calendarReader: CalendarReader,
+) {
   const checkpoints = createSqliteCheckpointStore(db);
 
   const { source: slackBriefingSource } = createSlackBriefingSource({
@@ -29,6 +34,11 @@ export function createConfiguredDailyBriefing(model: LanguageModel) {
         checkpoints,
       }),
       slackBriefingSource,
+      createCalendarBriefingSource({
+        reader: calendarReader,
+        connectionId: "default",
+        tenantId: "default",
+      }),
     ],
   });
 }

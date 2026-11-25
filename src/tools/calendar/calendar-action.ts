@@ -9,6 +9,7 @@ import type {
   CalendarReader,
 } from "../../connectors/communication/contracts";
 import { requireTimeZone } from "../../system/timezone";
+import { resolveBriefingEventId } from "../../briefing";
 
 const CALENDAR_PAGE_SIZE = 50;
 
@@ -462,7 +463,8 @@ export function createCalendarActionTools(
       } catch {}
 
       try {
-        const event = await reader.getEventDetails(eventId);
+        const targetId = resolveBriefingEventId(eventId);
+        const event = await reader.getEventDetails(targetId);
 
         return event
           ? {
@@ -686,7 +688,8 @@ export function createCalendarActionTools(
       attendeeEmails: z.array(z.string().trim()).optional().describe("New guest list."),
     }),
     execute: async (input) => {
-      const existing = await reader.getEventDetails(input.eventId);
+      const targetId = resolveBriefingEventId(input.eventId);
+      const existing = await reader.getEventDetails(targetId);
 
       if (!existing) {
         return { status: "not_available" as const };
@@ -749,6 +752,7 @@ export function createCalendarActionTools(
 
       const result = await reader.updateEvent({
         ...input,
+        eventId: targetId,
         start: startInstant,
         end: endInstant,
         timeZone,
@@ -775,7 +779,8 @@ export function createCalendarActionTools(
       eventId: z.string().trim().min(1).describe("The event ID to delete."),
     }),
     execute: async ({ eventId }) => {
-      const existing = await reader.getEventDetails(eventId);
+      const targetId = resolveBriefingEventId(eventId);
+      const existing = await reader.getEventDetails(targetId);
 
       if (!existing) {
         return { status: "not_available" as const };
@@ -802,7 +807,7 @@ export function createCalendarActionTools(
         return { status: "declined" as const, reason: "User declined to delete the event." };
       }
 
-      const result = await reader.deleteEvent(eventId);
+      const result = await reader.deleteEvent(targetId);
 
       return result.status === "deleted"
         ? { status: "ok" as const }
@@ -825,7 +830,8 @@ export function createCalendarActionTools(
       comment: z.string().trim().optional().describe("Optional message or comment with your response."),
     }),
     execute: async (input) => {
-      const existing = await reader.getEventDetails(input.eventId);
+      const targetId = resolveBriefingEventId(input.eventId);
+      const existing = await reader.getEventDetails(targetId);
 
       if (!existing) {
         return { status: "not_available" as const };
@@ -853,7 +859,7 @@ export function createCalendarActionTools(
       }
 
       const result = await reader.respondToEvent({
-        eventId: input.eventId,
+        eventId: targetId,
         response: input.response,
         comment: input.comment,
       });

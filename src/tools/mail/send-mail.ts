@@ -41,16 +41,20 @@ export function createSendEmailTool(mailSender: MailSender, confirmDraft: Confir
         };
       }
 
+      const isReply = Boolean(draft.threadId || draft.inReplyTo);
       const decision = await confirmDraft(
         draft,
         [
-          "Email",
+          isReply ? "Email (Reply in thread)" : "Email",
           `From: ${from}`,
           `To: ${draft.to}`,
           `Subject: ${draft.subject}`,
+          draft.threadId ? `Thread ID: ${draft.threadId}` : null,
           "",
           draft.body,
-        ].join("\n"),
+        ]
+          .filter(Boolean)
+          .join("\n"),
       );
 
       if (decision.status !== "approved") return decision;
@@ -60,6 +64,9 @@ export function createSendEmailTool(mailSender: MailSender, confirmDraft: Confir
           to: draft.to,
           subject: draft.subject,
           body: draft.body,
+          threadId: draft.threadId,
+          inReplyTo: draft.inReplyTo,
+          references: draft.references,
         });
 
         if (!result.messageId) {

@@ -7,7 +7,7 @@ export function createDailyBriefingTool(
 ) {
   return tool({
     description:
-      "Create a read-only daily briefing from configured Gmail and Slack sources. Returns a formatted summary and actionable items with message IDs and suggested actions (archive, trash, star, draft reply, etc.).",
+      "Create a read-only daily briefing from configured Gmail, Slack, and Google Calendar sources. Returns a formatted summary and actionable items with message, channel, and event IDs and suggested actions (archive, trash, star, draft reply, RSVP/update calendar events, etc.).",
     inputSchema: z.object({}),
     execute: () => runBriefing(),
   });

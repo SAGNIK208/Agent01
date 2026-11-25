@@ -8,6 +8,10 @@ export type Draft = {
   subject?: string;
   body: string;
   approved: boolean;
+  threadId?: string;
+  inReplyTo?: string;
+  references?: string;
+  threadTs?: string;
 };
 
 const drafts = new Map<string, Draft>();

@@ -38,6 +38,7 @@ export function renderBriefing(report: BriefingReport): string {
 
   const mailItems = report.items.filter((item) => item.kind === "mail");
   const chatItems = report.items.filter((item) => item.kind === "chat");
+  const calendarItems = report.items.filter((item) => item.kind === "calendar");
 
   if (mailItems.length > 0) {
     const latestMail = mailItems.reduce((latest, item) =>
@@ -55,6 +56,10 @@ export function renderBriefing(report: BriefingReport): string {
     lines.push(
       `- Latest Slack message included: ${oneLine(latestChat.title)} (${latestChat.occurredAt})`,
     );
+  }
+
+  if (calendarItems.length > 0) {
+    lines.push(`- Calendar events included: ${calendarItems.length}`);
   }
 
   if (!report.calendarIncluded) {
@@ -103,7 +108,7 @@ export function renderBriefing(report: BriefingReport): string {
 
   lines.push(
     "",
-    `Run: ${report.runId}. No email or Slack message was changed, sent, archived, or deleted.`,
+    `Run: ${report.runId}. No email, Slack message, or calendar event was changed, sent, archived, or deleted.`,
   );
 
   return lines.join("\n");

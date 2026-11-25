@@ -4,6 +4,7 @@ import {
   buildActionableItems,
   registerBriefingTargets,
   resolveBriefingChannelId,
+  resolveBriefingEventId,
   resolveBriefingMessageId,
 } from "./handoff";
 import type { BriefingReport } from "./run";
@@ -32,6 +33,14 @@ test("handoff resolves item references to underlying message IDs and channel IDs
         authorId: "U999",
       },
     ],
+    [
+      "item-3",
+      {
+        provider: "google-calendar",
+        connectionId: "default",
+        itemId: "gcal-event-789",
+      },
+    ],
   ]);
 
   registerBriefingTargets(targets);
@@ -41,6 +50,9 @@ test("handoff resolves item references to underlying message IDs and channel IDs
 
   assert.equal(resolveBriefingChannelId("item-2"), "C12345678");
   assert.equal(resolveBriefingChannelId("C99999999"), "C99999999");
+
+  assert.equal(resolveBriefingEventId("item-3"), "gcal-event-789");
+  assert.equal(resolveBriefingEventId("raw-event-id"), "raw-event-id");
 });
 
 test("buildActionableItems constructs actionable items with suggested tools", () => {
@@ -75,6 +87,13 @@ test("buildActionableItems constructs actionable items with suggested tools", ()
         excerpt: "Deploy failed",
         occurredAt: "2026-11-21T12:00:00.000Z",
       },
+      {
+        ref: "item-4",
+        kind: "calendar",
+        title: "Conflict Meeting",
+        excerpt: "Potential overlap with Team Sync",
+        occurredAt: "2026-11-21T14:00:00.000Z",
+      },
     ],
     targets: new Map([
       [
@@ -103,6 +122,14 @@ test("buildActionableItems constructs actionable items with suggested tools", ()
           containerId: "C_DEV",
         },
       ],
+      [
+        "item-4",
+        {
+          provider: "google-calendar",
+          connectionId: "default",
+          itemId: "gcal-conflict-123",
+        },
+      ],
     ]),
     entries: [
       {
@@ -120,6 +147,11 @@ test("buildActionableItems constructs actionable items with suggested tools", ()
         category: "needs_attention",
         explanation: "CI pipeline broken",
       },
+      {
+        ref: "item-4",
+        category: "needs_attention",
+        explanation: "Overlapping schedule",
+      },
     ],
     classification: "ok",
     followUpRecommended: false,
@@ -127,7 +159,7 @@ test("buildActionableItems constructs actionable items with suggested tools", ()
 
   const actionable = buildActionableItems(report);
 
-  assert.equal(actionable.length, 3);
+  assert.equal(actionable.length, 4);
 
   // item-1: spam
   assert.equal(actionable[0]?.ref, "item-1");
@@ -143,13 +175,25 @@ test("buildActionableItems constructs actionable items with suggested tools", ()
   assert.equal(actionable[1]?.messageId, "msg-pr");
   assert.equal(actionable[1]?.sender, "alice@example.com");
   assert.equal(actionable[1]?.category, "approval_requested");
+  assert.ok(actionable[1]?.suggestedActions.includes("draftEmailReply"));
   assert.ok(actionable[1]?.suggestedActions.includes("draftEmail"));
 
   // item-3: slack attention
   assert.equal(actionable[2]?.ref, "item-3");
   assert.equal(actionable[2]?.channelId, "C_DEV");
   assert.equal(actionable[2]?.category, "needs_attention");
-  assert.deepEqual(actionable[2]?.suggestedActions, ["draftChatMessage"]);
+  assert.deepEqual(actionable[2]?.suggestedActions, [
+    "draftChatReply",
+    "draftChatMessage",
+  ]);
+
+  // item-4: calendar attention
+  assert.equal(actionable[3]?.ref, "item-4");
+  assert.equal(actionable[3]?.eventId, "gcal-conflict-123");
+  assert.equal(actionable[3]?.provider, "google-calendar");
+  assert.equal(actionable[3]?.category, "needs_attention");
+  assert.ok(actionable[3]?.suggestedActions.includes("getCalendarEventDetails"));
+  assert.ok(actionable[3]?.suggestedActions.includes("updateCalendarEvent"));
 });
 
 test("createDailyBriefing updates checkpoints after successful run", async () => {

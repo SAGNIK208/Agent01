@@ -16,15 +16,21 @@ export {
   createSlackBriefingSource,
   createSlackChannelDiscovery,
 } from "./slack-source";
+export { createCalendarBriefingSource } from "./gcal-source";
 export {
   checkpointKeyForSlackChannel,
   createSqliteCheckpointStore,
 } from "./checkpoints";
 export {
+  buildActionableItems,
   registerBriefingTargets,
   resolveBriefingChannelId,
+  resolveBriefingEventId,
   resolveBriefingMessageId,
+  resolveBriefingMessageTs,
+  resolveBriefingSender,
   resolveBriefingTarget,
+  resolveBriefingThreadId,
   type ActionableBriefingItem,
   type DailyBriefingResult,
 } from "./handoff";
@@ -46,7 +52,7 @@ async function advanceCheckpoints(
 
   for (const item of report.items) {
     const target = report.targets.get(item.ref);
-    if (!target) continue;
+    if (!target || target.provider === "google-calendar") continue;
 
     const timeMs = Date.parse(item.occurredAt);
     if (!Number.isFinite(timeMs)) continue;

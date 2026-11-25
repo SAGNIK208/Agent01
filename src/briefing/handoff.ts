@@ -17,6 +17,7 @@ export interface ActionableBriefingItem {
   sender?: string;
   authorId?: string;
   suggestedActions: string[];
+  eventId?: string;
 }
 
 export interface DailyBriefingResult {
@@ -59,6 +60,38 @@ export function resolveBriefingChannelId(refOrId: string): string {
   return refOrId;
 }
 
+export function resolveBriefingEventId(refOrId: string): string {
+  const target = recentTargets.get(refOrId);
+  if (target && target.provider === "google-calendar") {
+    return target.itemId;
+  }
+  return refOrId;
+}
+
+export function resolveBriefingThreadId(refOrId: string): string | undefined {
+  const target = recentTargets.get(refOrId);
+  if (target && target.provider === "gmail") {
+    return target.containerId;
+  }
+  return undefined;
+}
+
+export function resolveBriefingMessageTs(refOrId: string): string | undefined {
+  const target = recentTargets.get(refOrId);
+  if (target && target.provider === "slack") {
+    return target.itemId;
+  }
+  return undefined;
+}
+
+export function resolveBriefingSender(refOrId: string): string | undefined {
+  const target = recentTargets.get(refOrId);
+  if (target && target.provider === "gmail") {
+    return target.sender;
+  }
+  return undefined;
+}
+
 export function buildActionableItems(
   report: BriefingReport,
 ): ActionableBriefingItem[] {
@@ -85,6 +118,7 @@ export function buildActionableItems(
         case "needs_attention":
         case "approval_requested":
           suggestedActions.push(
+            "draftEmailReply",
             "draftEmail",
             "starMailMessage",
             "markMailMessageRead",
@@ -95,28 +129,52 @@ export function buildActionableItems(
       }
     } else if (item.kind === "chat") {
       if (category === "needs_attention" || category === "approval_requested") {
-        suggestedActions.push("draftChatMessage");
+        suggestedActions.push("draftChatReply", "draftChatMessage");
+      }
+    } else if (item.kind === "calendar") {
+      if (category === "needs_attention") {
+        suggestedActions.push(
+          "getCalendarEventDetails",
+          "checkCalendarAvailability",
+          "updateCalendarEvent",
+          "respondToCalendarEvent",
+        );
+      } else {
+        suggestedActions.push(
+          "getCalendarEventDetails",
+          "respondToCalendarEvent",
+        );
       }
     }
 
     return {
       ref: item.ref,
       kind: item.kind,
-      provider: target?.provider ?? (item.kind === "mail" ? "gmail" : "slack"),
+      provider:
+        target?.provider ??
+        (item.kind === "mail"
+          ? "gmail"
+          : item.kind === "chat"
+            ? "slack"
+            : "google-calendar"),
       title: item.title,
       category,
       explanation,
       occurredAt: item.occurredAt,
       ...(item.kind === "mail"
         ? {
-            messageId: target?.itemId,
-            threadId: target?.containerId,
-            ...(target?.sender ? { sender: target.sender } : {}),
-          }
-        : {
+          messageId: target?.itemId,
+          threadId: target?.containerId,
+          ...(target?.sender ? { sender: target.sender } : {}),
+        }
+        : item.kind === "chat"
+          ? {
             channelId: target?.containerId,
             messageTs: target?.itemId,
             ...(target?.authorId ? { authorId: target.authorId } : {}),
+          }
+          : {
+            eventId: target?.itemId,
           }),
       suggestedActions,
     };

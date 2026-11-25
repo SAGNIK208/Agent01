@@ -4,9 +4,9 @@ import { corsair } from "../connectors/corsair";
 import { createGmailReader, createGmailSender, createGmailMailActions } from "../connectors/communication/gmail";
 import { createSlackReader, createSlackSender } from "../connectors/communication/slack";
 import { createCommunicationReadTools } from "./communication/read-tool";
-import { draftEmail } from "./mail/draft-mail";
+import { createMailDraftTools } from "./mail/draft-mail";
 import { createSendEmailTool } from "./mail/send-mail";
-import { draftChatMessage } from "./slack/draft-message";
+import { draftChatMessage, draftChatReply } from "./slack/draft-message";
 import { createSendChatMessageTool } from "./slack/send-message";
 import { createMailActionTools } from "./mail/mail-action";
 import { createDailyBriefingTool } from "./communication/daily-briefing";
@@ -27,6 +27,7 @@ const communicationReadTools = createCommunicationReadTools({
   mail: mailReader,
   chat: chatReader,
 });
+const { draftEmail, draftEmailReply } = createMailDraftTools(mailReader);
 
 const calendarReader = createGoogleCalendarReader({
   events: corsair.googlecalendar.api.events,
@@ -45,11 +46,13 @@ export function getTools(confirm: Confirm, model?: LanguageModel) {
     ...communicationReadTools,
     ...calendarTools,
     draftEmail,
+    draftEmailReply,
     draftChatMessage,
+    draftChatReply,
     viewDraft,
     sendEmail: createSendEmailTool(mailSender, confirmDraft),
     sendChatMessage: createSendChatMessageTool(chatSender, confirmDraft),
-    ...(model ? { getDailyBriefing: createDailyBriefingTool(createConfiguredDailyBriefing(model)) } : {}),
+    ...(model ? { getDailyBriefing: createDailyBriefingTool(createConfiguredDailyBriefing(model, calendarReader)) } : {}),
     ...mailActionTools,
   };
 }

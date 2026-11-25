@@ -100,3 +100,64 @@ test("keeps coverage when classification fails", async () => {
   assert.equal(report.classification, "failed");
   assert.equal(report.coverage[0]?.count, 1);
 });
+
+test("includes calendar source and classifies calendar events", async () => {
+  const calendarSource: BriefingSource = {
+    id: "google-calendar",
+    label: "Google Calendar",
+    kind: "calendar",
+    async collect() {
+      return {
+        skipped: 0,
+        truncated: false,
+        items: [
+          {
+            title: "Project Architecture Review",
+            excerpt: "14:00 to 15:00. RSVP pending (response required)",
+            occurredAt: "2026-11-22T08:30:00.000Z",
+            target: {
+              provider: "google-calendar",
+              connectionId: "default",
+              itemId: "cal-arch-review-1",
+            },
+          },
+        ],
+      };
+    },
+  };
+
+  const report = await runBriefing({
+    sources: [mailSource, calendarSource],
+    classify: async (items) => {
+      assert.equal(items.length, 2);
+      return {
+        entries: [
+          {
+            ref: "item-1",
+            category: "approval_requested",
+            explanation: "Invoice approval needed",
+          },
+          {
+            ref: "item-2",
+            category: "needs_attention",
+            explanation: "Review pending invitation",
+          },
+        ],
+      };
+    },
+    window,
+  });
+
+  assert.equal(report.classification, "ok");
+  assert.equal(report.calendarIncluded, true);
+  assert.equal(report.items.length, 2);
+  assert.equal(report.entries.length, 2);
+  assert.equal(report.targets.get("item-2")?.provider, "google-calendar");
+  assert.equal(report.targets.get("item-2")?.itemId, "cal-arch-review-1");
+
+  const rendered = renderBriefing(report);
+  assert.match(rendered, /Google Calendar: 1 included/);
+  assert.match(rendered, /Calendar events included: 1/);
+  assert.doesNotMatch(rendered, /Calendar not included/);
+  assert.match(rendered, /Project Architecture Review/);
+});

@@ -13,6 +13,16 @@ export interface MailMessageRef {
   threadId?: string;
 }
 
+export interface MailMessageMetadata {
+  id: string;
+  threadId?: string;
+  subject?: string;
+  from?: string;
+  replyTo?: string;
+  messageIdHeader?: string;
+  referencesHeader?: string;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
@@ -22,6 +32,7 @@ export interface ChatMessage {
 
 export interface MailReader {
   listMessages(input: PageRequest): Promise<Page<MailMessageRef>>;
+  getMessage?(messageId: string): Promise<MailMessageMetadata | null>;
 }
 
 export interface ChatReader {
@@ -34,6 +45,9 @@ export interface SendMailParams {
   to: string;
   subject: string;
   body: string;
+  threadId?: string;
+  inReplyTo?: string;
+  references?: string;
 }
 
 export interface SendMailResult {
@@ -47,6 +61,7 @@ export interface MailSender {
 export interface SendChatParams {
   conversationId: string;
   body: string;
+  threadTs?: string;
 }
 
 export interface SendChatResult {
