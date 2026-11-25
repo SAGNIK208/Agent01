@@ -8,6 +8,10 @@ export type Draft = {
   subject?: string;
   body: string;
   approved: boolean;
+  threadId?: string;
+  inReplyTo?: string;
+  references?: string;
+  threadTs?: string;
 };
 
 const drafts = new Map<string, Draft>();
@@ -19,6 +23,17 @@ export function saveDraft(draft: Draft): Draft {
 
 export function getDraft(id: string): Draft | undefined {
   return drafts.get(id);
+}
+
+export function listDrafts(connector?: Connector): Draft[] {
+  const all = Array.from(drafts.values());
+  if (!connector) return all;
+  return all.filter((draft) => draft.connector === connector);
+}
+
+export function getLatestDraft(connector?: Connector): Draft | undefined {
+  const matching = listDrafts(connector).filter((draft) => !draft.approved);
+  return matching[matching.length - 1] ?? listDrafts(connector).pop();
 }
 
 export function approveDraft(id: string): boolean {

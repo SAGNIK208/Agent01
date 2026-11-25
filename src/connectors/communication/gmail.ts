@@ -15,7 +15,7 @@ import type {
 
 type CorsairGmailMessages = typeof corsair.gmail.api.messages;
 
-type GmailReaderApi = Pick<CorsairGmailMessages, "list">;
+type GmailReaderApi = Pick<CorsairGmailMessages, "list" | "get">;
 type GmailSenderApi = Pick<CorsairGmailMessages, "send">;
 type GmailActionsApi = Pick<CorsairGmailMessages, "modify" | "trash" | "untrash">;
 
@@ -44,23 +44,67 @@ export function createGmailReader(api: GmailReaderApi): MailReader {
           : {}),
       };
     },
+
+    async getMessage(messageId) {
+      try {
+        const result = await api.get({
+          userId: "me",
+          id: messageId,
+          format: "metadata",
+          metadataHeaders: ["Subject", "From", "Reply-To", "Message-ID", "References"],
+        });
+
+        const headers = result.payload?.headers ?? [];
+        const findHeader = (name: string): string | undefined => {
+          const lower = name.toLowerCase();
+          return headers.find((h) => h.name?.toLowerCase() === lower)?.value ?? undefined;
+        };
+
+        return {
+          id: result.id ?? messageId,
+          ...(result.threadId ? { threadId: result.threadId } : {}),
+          subject: findHeader("Subject"),
+          from: findHeader("From"),
+          replyTo: findHeader("Reply-To"),
+          messageIdHeader: findHeader("Message-ID"),
+          referencesHeader: findHeader("References"),
+        };
+      } catch {
+        return null;
+      }
+    },
   };
 }
 
 export function createGmailSender(api: GmailSenderApi): MailSender {
   return {
-    async send({ to, subject, body }: SendMailParams): Promise<SendMailResult> {
+    async send({ to, subject, body, threadId, inReplyTo, references }: SendMailParams): Promise<SendMailResult> {
       const from = process.env.GMAIL_FROM;
       if (!from) {
         throw new Error("Set GMAIL_FROM to your connected Gmail address in .env.");
       }
 
-      const message = {
+      const message: Record<string, unknown> = {
         from,
         to,
         subject,
         text: body,
       };
+
+      if (inReplyTo) {
+        const formattedInReplyTo =
+          inReplyTo.startsWith("<") && inReplyTo.endsWith(">")
+            ? inReplyTo
+            : `<${inReplyTo}>`;
+        message.inReplyTo = formattedInReplyTo;
+        if (references) {
+          message.references = references.includes(formattedInReplyTo)
+            ? references
+            : `${references} ${formattedInReplyTo}`;
+        } else {
+          message.references = formattedInReplyTo;
+        }
+      }
 
       const mime = await new MailComposer(message).compile().build();
       const raw = mime.toString("base64url");
@@ -68,6 +112,7 @@ export function createGmailSender(api: GmailSenderApi): MailSender {
       const result = await api.send({
         userId: "me",
         raw,
+        ...(threadId ? { threadId } : {}),
       });
 
       if (!result.id) {

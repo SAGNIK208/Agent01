@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { ConfirmDraft } from "../../agent/confirm";
-import { getDraft } from "../../agent/state";
+import { getDraft, getLatestDraft } from "../../agent/state";
 import type { ChatSender } from "../../connectors/communication/contracts";
 
 export function createSendChatMessageTool(chatSender: ChatSender, confirmDraft: ConfirmDraft) {
@@ -10,11 +10,14 @@ export function createSendChatMessageTool(chatSender: ChatSender, confirmDraft: 
       "Show a saved chat draft, request user confirmation, then post it. Requires an explicit conversation ID.",
 
     inputSchema: z.object({
-      draftId: z.string().min(1),
+      draftId: z
+        .string()
+        .min(1)
+        .describe("The draft ID returned by draftChatMessage, or 'latest' to send the most recent chat draft."),
     }),
 
     execute: async ({ draftId }) => {
-      const draft = getDraft(draftId);
+      const draft = getDraft(draftId) ?? getLatestDraft("chat");
 
       if (
         !draft ||
@@ -38,11 +41,19 @@ export function createSendChatMessageTool(chatSender: ChatSender, confirmDraft: 
 
       const channel = draft.channel;
       const text = draft.body;
+      const isReply = Boolean(draft.threadTs);
 
-      const decision = await confirmDraft(
-        draft,
-        `Chat\nChannel/Conversation ID: ${channel}\n\n${text}`,
-      );
+      const preview = [
+        isReply ? "Chat (Thread reply)" : "Chat",
+        `Channel/Conversation ID: ${channel}`,
+        draft.threadTs ? `Thread TS: ${draft.threadTs}` : null,
+        "",
+        text,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const decision = await confirmDraft(draft, preview);
 
       if (decision.status !== "approved") return decision;
 
@@ -50,6 +61,7 @@ export function createSendChatMessageTool(chatSender: ChatSender, confirmDraft: 
         const result = await chatSender.send({
           conversationId: channel,
           body: text,
+          threadTs: draft.threadTs,
         });
 
         return {

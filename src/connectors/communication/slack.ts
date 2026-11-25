@@ -47,10 +47,11 @@ export function createSlackReader(api: SlackChannelsApi): ChatReader {
 
 export function createSlackSender(api: SlackMessagesApi): ChatSender {
   return {
-    async send({ conversationId, body }: SendChatParams): Promise<SendChatResult> {
+    async send({ conversationId, body, threadTs }: SendChatParams): Promise<SendChatResult> {
       const result = await api.post({
         channel: conversationId,
         text: body,
+        ...(threadTs ? { thread_ts: threadTs } : {}),
       });
 
       if (!result.ok || !result.ts) {
